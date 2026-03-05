@@ -32,17 +32,17 @@ const COLOR_PRESETS = {
 
 const params = {
   /* Particles */
-  particleCount: 50000,
-  pointSize: 3.5,
-  brightness: 1.5,
+  particleCount: 35000,
+  pointSize: 2.5,
+  brightness: 0.85,
   additiveBlending: true,
 
   /* Physics */
-  gravity: 1.5,
-  turbulence: 2.0,
-  turbulenceFrequency: 1.5,
-  damping: 0.985,
-  bounce: 0.6,
+  gravity: 1.0,
+  turbulence: 3.0,
+  turbulenceFrequency: 1.8,
+  damping: 0.982,
+  bounce: 0.65,
 
   /* Colors */
   preset: 'Inferno',

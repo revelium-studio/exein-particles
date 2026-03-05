@@ -225,7 +225,7 @@ export class ParticleSystem {
     /* Normalize speeds (0–1) with a power curve for contrast */
     const inv = 1.0 / maxSpeed
     for (let i = 0, n = this.activeCount; i < n; i++) {
-      spd[i] = Math.pow(spd[i] * inv, 0.55)
+      spd[i] = Math.pow(spd[i] * inv, 0.4)
     }
 
     /* ── Push updates to GPU ─────────────────────── */
