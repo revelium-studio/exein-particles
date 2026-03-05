@@ -32,29 +32,29 @@ const COLOR_PRESETS = {
 
 const params = {
   /* Particles */
-  particleCount: 35000,
-  pointSize: 2.5,
-  brightness: 0.85,
+  particleCount: 10000,
+  pointSize: 0.5,
+  brightness: 0.7,
   additiveBlending: true,
 
   /* Physics */
-  gravity: 1.0,
-  turbulence: 3.0,
-  turbulenceFrequency: 1.8,
-  damping: 0.982,
+  gravity: -0.4,
+  turbulence: 3.4,
+  turbulenceFrequency: 3.5,
+  damping: 0.922,
   bounce: 0.65,
 
   /* Colors */
-  preset: 'Inferno',
-  color1: '#0d0829',
-  color2: '#b12a90',
-  color3: '#e8632c',
-  color4: '#fcffa4',
+  preset: 'Neon',
+  color1: '#0a001a',
+  color2: '#6600ff',
+  color3: '#ff00aa',
+  color4: '#ffccff',
 
   /* Cube */
-  borderWidth: 0.012,
+  borderWidth: 0.031,
   borderOpacity: 0.85,
-  faceOpacity: 0.06,
+  faceOpacity: 0,
   rotationSpeed: 0.5,
   cubeScale: 1.0,
   autoRotate: true,
@@ -121,7 +121,7 @@ const gui = new GUI({ width: 300, title: '✦  EXEIN PARTICLES' })
 /* ── Particles ──────────────────────────────────────────── */
 const fParticles = gui.addFolder('Particles')
 fParticles.add(params, 'particleCount', 1000, 150000, 1000).name('Count')
-fParticles.add(params, 'pointSize', 0.5, 15, 0.1).name('Size')
+fParticles.add(params, 'pointSize', 0.02, 0.5, 0.01).name('Size')
 fParticles.add(params, 'brightness', 0.1, 5, 0.05).name('Brightness')
 fParticles.add(params, 'additiveBlending').name('Additive Blend')
 fParticles.add({ reset: () => particles.reset() }, 'reset').name('↻  Reset Particles')
@@ -171,36 +171,82 @@ fScene.addColor(params, 'backgroundColor').name('Background').onChange((v) => {
   renderer.setClearColor(new THREE.Color(v), 1)
 })
 
+/* ── Export / Import ───────────────────────────────────── */
+const fExport = gui.addFolder('Export / Import')
+
+fExport.add({
+  exportJSON: () => {
+    const json = JSON.stringify(params, null, 2)
+    navigator.clipboard.writeText(json).then(() => {
+      showToast('Parameters copied to clipboard!')
+    }).catch(() => {
+      /* Fallback: prompt with the text */
+      prompt('Copy this JSON:', json)
+    })
+  }
+}, 'exportJSON').name('📋  Copy Params JSON')
+
+fExport.add({
+  importJSON: () => {
+    const input = prompt('Paste params JSON:')
+    if (!input) return
+    try {
+      const imported = JSON.parse(input)
+      Object.assign(params, imported)
+      /* Refresh all GUI controllers */
+      gui.controllersRecursive().forEach((c) => c.updateDisplay())
+      renderer.setClearColor(new THREE.Color(params.backgroundColor), 1)
+      showToast('Parameters loaded!')
+    } catch (e) {
+      alert('Invalid JSON: ' + e.message)
+    }
+  }
+}, 'importJSON').name('📥  Paste Params JSON')
+
 /* Close some folders by default for a cleaner initial view */
 fPhysics.close()
 fCube.close()
 fScene.close()
+fExport.close()
 
 /* ══════════════════════════════════════════════════════════
-   Rotation helpers (replicates Apple Fifth Avenue motion)
+   Toast notification (non-intrusive feedback)
    ══════════════════════════════════════════════════════════ */
 
-const BASE_ROTATION = 4.8 // radians — from the original
-const _axis = new THREE.Vector3()
-const _q1 = new THREE.Quaternion()
-const _q2 = new THREE.Quaternion()
+function showToast(message) {
+  let toast = document.getElementById('param-toast')
+  if (!toast) {
+    toast = document.createElement('div')
+    toast.id = 'param-toast'
+    toast.style.cssText = `
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+      background: rgba(15, 15, 30, 0.92); color: rgba(255,255,255,0.9);
+      padding: 10px 24px; border-radius: 8px; font-size: 13px;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.08);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4); z-index: 99999;
+      opacity: 0; transition: opacity 0.3s ease;
+    `
+    document.body.appendChild(toast)
+  }
+  toast.textContent = message
+  toast.style.opacity = '1'
+  clearTimeout(toast._timeout)
+  toast._timeout = setTimeout(() => { toast.style.opacity = '0' }, 2000)
+}
+
+/* ══════════════════════════════════════════════════════════
+   Cube rotation — always clearly a cube
+   ══════════════════════════════════════════════════════════ */
 
 function updateCubeRotation(elapsed) {
   if (!params.autoRotate) return
 
-  const factor = elapsed * params.rotationSpeed
-
-  /* Fixed base rotation around (1,1,1) */
-  _q1.setFromAxisAngle(
-    new THREE.Vector3(1, 1, 1).normalize(),
-    BASE_ROTATION,
-  )
-
-  /* Time-varying tumble — axis rotates in XY plane */
-  _axis.set(Math.cos(factor), Math.sin(factor), 0.5).normalize()
-  _q2.setFromAxisAngle(_axis, factor)
-
-  cubeGroup.quaternion.copy(_q1).multiply(_q2)
+  /* Gentle 3/4 view: fixed X-tilt + slow Y-spin + tiny wobble.
+     This keeps the silhouette always recognisably cubic. */
+  cubeGroup.rotation.x = 0.35
+  cubeGroup.rotation.y = elapsed * params.rotationSpeed
+  cubeGroup.rotation.z = Math.sin(elapsed * 0.15) * 0.06
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -233,7 +279,7 @@ function animate() {
   const s = params.cubeScale
   cubeGroup.scale.set(s, s, s)
 
-  /* Rotation (Apple Fifth Avenue style) */
+  /* Rotation */
   updateCubeRotation(elapsed)
 
   /* Update subsystems */
