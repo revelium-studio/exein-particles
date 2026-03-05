@@ -211,7 +211,12 @@ export class ParticleSystem {
     this._wantReset = false
 
     /* ── Initialise GPU compute ────────────────────── */
-    this._initCompute()
+    try {
+      this._initCompute()
+    } catch (e) {
+      console.error('GPU compute init failed, falling back to static particles:', e)
+      this.gpuCompute = null
+    }
 
     /* ── Render geometry ──────────────────────────── */
     const geo  = new THREE.BufferGeometry()
@@ -265,10 +270,9 @@ export class ParticleSystem {
   _initCompute() {
     const gpu = new GPUComputationRenderer(TEX_SIZE, TEX_SIZE, this.renderer)
 
-    /* Use HalfFloatType on WebGL 1 for compatibility */
-    if (this.renderer.capabilities.isWebGL2 === false) {
-      gpu.setDataType(THREE.HalfFloatType)
-    }
+    /* HalfFloatType is required — FloatType render targets need
+       EXT_color_buffer_float which isn't guaranteed even in WebGL 2 */
+    gpu.setDataType(THREE.HalfFloatType)
 
     const dtPos = gpu.createTexture()
     const dtVel = gpu.createTexture()
