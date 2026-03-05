@@ -88,7 +88,7 @@ const cubeFragmentShader = /* glsl */ `
     vec3 rainbow = radialRainbow(vUv, uTime);
 
     /* depth fade — further faces are dimmer */
-    float depthFade = clamp(smoothstep(2.0, 8.0, vDepth), 0.35, 0.95);
+    float depthFade = clamp(smoothstep(2.0, 8.0, vDepth), 0.45, 1.0);
 
     vec3 edgeColor   = rainbow * border * depthFade;
     float edgeAlpha  = border * uBorderOpacity * depthFade;
