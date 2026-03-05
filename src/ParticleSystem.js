@@ -265,6 +265,11 @@ export class ParticleSystem {
   _initCompute() {
     const gpu = new GPUComputationRenderer(TEX_SIZE, TEX_SIZE, this.renderer)
 
+    /* Use HalfFloatType on WebGL 1 for compatibility */
+    if (this.renderer.capabilities.isWebGL2 === false) {
+      gpu.setDataType(THREE.HalfFloatType)
+    }
+
     const dtPos = gpu.createTexture()
     const dtVel = gpu.createTexture()
 
@@ -286,9 +291,15 @@ export class ParticleSystem {
       va[i + 3] = 1
     }
 
-    /* Add variables */
-    this.velVar = gpu.addVariable('Velocity', computeVelocity, dtVel)
-    this.posVar = gpu.addVariable('Position', computePosition, dtPos)
+    /* Mark textures for upload after data modification */
+    dtPos.needsUpdate = true
+    dtVel.needsUpdate = true
+
+    /* Variable names MUST match the sampler names used in the shaders
+       (texturePosition, textureVelocity) — GPUComputationRenderer uses
+       these names as uniform identifiers. */
+    this.velVar = gpu.addVariable('textureVelocity', computeVelocity, dtVel)
+    this.posVar = gpu.addVariable('texturePosition', computePosition, dtPos)
 
     /* Dependencies: both read each other */
     gpu.setVariableDependencies(this.velVar, [this.posVar, this.velVar])
@@ -313,10 +324,12 @@ export class ParticleSystem {
     pu.uDelta = { value: 0 }
     pu.uReset = { value: 0 }
 
-    /* Init */
+    /* Init — bail out cleanly if GPU compute isn't supported */
     const err = gpu.init()
     if (err !== null) {
       console.error('GPUComputationRenderer error:', err)
+      this.gpuCompute = null
+      return
     }
 
     this.gpuCompute = gpu
